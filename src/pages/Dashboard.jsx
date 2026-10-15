@@ -1,78 +1,173 @@
-import { supabase } from "../supabaseClient"
-import { useNavigate } from "react-router-dom"
-import { useState, useEffect } from "react"
 
+import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 function Dashboard() {
-  const navigate = useNavigate()
-  const [email, setEmail] = useState("")
-  const [customers, setCustomers] = useState([]) 
-  const [loading, setLoading] = useState(true)   
-  const [error, setError] = useState(null)
+  const navigate = useNavigate();
 
+  const [email, setEmail] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-
-
-
-
-
-
-
-  
-
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
 
   async function fetchCustomers() {
-    setLoading(true)
-    setError(null)
-    const { data, error } = await supabase.from("customers").select("*")
+    setLoading(true);
+    setError(null);
+
+    const { data, error } = await supabase
+      .from("customers")
+      .select("*")
+      .order("created_at", { ascending: false });
+
     if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
+      setError(error.message);
+      setLoading(false);
+      return;
     }
-    setCustomers(data)
-    setLoading(false)
+
+    setCustomers(data);
+    setLoading(false);
   }
 
   useEffect(() => {
     async function fetchUserEmail() {
-      const { data, error } = await supabase.auth.getUser()
+      const { data, error } = await supabase.auth.getUser();
+
       if (error) {
-        console.error("Error fetching user:", error.message)
-        return
+        console.error("Error fetching user:", error.message);
+        return;
       }
-      setEmail(data.user.email)
+
+      setEmail(data.user?.email ?? "");
     }
 
-    fetchUserEmail()
-    fetchCustomers()
-  }, [])
+    fetchUserEmail();
+    fetchCustomers();
+  }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+  setError(userError?.message || "You must be logged in to add a customer.");
+  return;
+}
+const { error: insertError } = await supabase
+  .from("customers")
+  .insert({
+    user_id: user.id,
+    name: formData.name,
+    email: formData.email,
+    phone: formData.phone || null,
+  });
+  if (insertError) {
+  setError(insertError.message);
+  return;
+}
+setFormData({
+  name: "",
+  email: "",
+  phone: "",
+});
+
+await fetchCustomers();
+};
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut();
+
     if (error) {
-      console.error("Error logging out:", error.message)
+      console.error("Error logging out:", error.message);
     } else {
-      navigate("/login")
+      navigate("/login");
     }
-  }
+  };
 
   return (
     <div>
       <h1>Dashboard</h1>
       <p>Email: {email}</p>
+
       {loading && <p>Loading customers...</p>}
       {error && <p>Error: {error}</p>}
+
+      <h2>Add Customer</h2>
+
+     <form onSubmit={handleSubmit}>
+        <label>
+          Name:
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            required
+          />
+        </label>
+
+        <br />
+
+        <label>
+          Email:
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            required
+          />
+        </label>
+
+        <br />
+
+        <label>
+          Phone:
+          <input
+            type="tel"
+            name="phone"
+            value={formData.phone}
+            onChange={handleInputChange}
+          />
+        </label>
+
+        <br />
+
+        <button type="submit">Add Customer</button>
+      </form>
+
       <h2>Customers</h2>
+
+      {!loading && customers.length === 0 && !error && (
+        <p>No customers yet. Add your first customer above!</p>
+      )}
+
       {customers.map((customer) => (
         <div key={customer.id}>
           <p>Name: {customer.name}</p>
           <p>Email: {customer.email}</p>
+          <p>Phone: {customer.phone || "Not provided"}</p>
         </div>
       ))}
+
       <button onClick={handleLogout}>Logout</button>
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;
