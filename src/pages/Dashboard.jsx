@@ -7,10 +7,13 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
+  const [phoneFilter, setPhoneFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -145,6 +148,21 @@ await fetchCustomers();
     }
   };
 
+
+  const filteredCustomers = customers.filter((customer) =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) || customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  const customersWithPhone = filteredCustomers.filter((customer) => customer.phone);
+
+  const displayedCustomers = phoneFilter === "withPhone" ? customersWithPhone : filteredCustomers;
+
+const sortedCustomers = [...displayedCustomers];
+
+if (sortOrder === "az") {
+  sortedCustomers.sort((a, b) => a.name.localeCompare(b.name));
+}
+
   return (
     <div>
       <h1>Dashboard</h1>
@@ -195,15 +213,32 @@ await fetchCustomers();
         <br />
 
         <button type="submit">Add Customer</button>
+        
       </form>
 
       <h2>Customers</h2>
+    <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+        <option value='newest'>Newest first</option>
+        <option value='az'>A-Z</option>
+        <option value='za'>Z-A</option>
+    </select>
+    <select value={phoneFilter} onChange={(e) => setPhoneFilter(e.target.value)}>
+  <option value="all">All customers</option>
+  <option value="withPhone">With phone numbers</option>
+</select>
+    <input type="text"
+  placeholder="Search customers..."
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+/>
 
-      {!loading && customers.length === 0 && !error && (
-        <p>No customers yet. Add your first customer above!</p>
+      {!loading && filteredCustomers.length === 0 && !error && (
+        <p>No customers match your search.</p>
       )}
 
-      {customers.map((customer) => (
+
+
+      {sortedCustomers.map((customer) => (
         <div key={customer.id}>
           <p>Name: {customer.name}</p>
           <p>Email: {customer.email}</p>
