@@ -10,12 +10,17 @@ function Dashboard() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
   });
+  const [editFormData, setEditFormData] = useState({
+  name: "",
+  email: "",
+  phone: "",
+});
 
   async function fetchCustomers() {
     setLoading(true);
@@ -60,6 +65,47 @@ function Dashboard() {
       [name]: value,
     }));
   };
+
+
+const handleUpdateCustomer = async (customerId) => {
+  const { error } = await supabase
+    .from("customers")
+    .update({
+      name: editFormData.name,
+      email: editFormData.email,
+      phone: editFormData.phone || null,
+    })
+    .eq("id", customerId);
+
+  if (error) {
+    setError(error.message);
+    return;
+  }
+
+  setEditingCustomerId(null);
+  await fetchCustomers();
+};
+
+
+const handleDeleteCustomer = async (customerId) => {
+    const confirmed = window.confirm(
+  "Are you sure you want to delete this customer?"
+);
+
+if (!confirmed) return;
+  const { error } = await supabase
+    .from("customers")
+    .delete()
+    .eq("id", customerId);
+
+  if (error) {
+    setError(error.message);
+    return;
+  }
+
+  await fetchCustomers();
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -162,9 +208,62 @@ await fetchCustomers();
           <p>Name: {customer.name}</p>
           <p>Email: {customer.email}</p>
           <p>Phone: {customer.phone || "Not provided"}</p>
+        <button
+  onClick={() => {
+    setEditingCustomerId(customer.id);
+    setEditFormData({
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone || "",
+    });
+  }}
+>
+  Edit
+</button>
+
+    {editingCustomerId === customer.id && (
+    <>
+    <input
+  name="name"
+  value={editFormData.name}
+  onChange={(e) =>
+    setEditFormData({ ...editFormData, name: e.target.value })
+  }
+/>
+<input
+  name="email"
+  value={editFormData.email}
+  onChange={(e) =>
+    setEditFormData({ ...editFormData, email: e.target.value })
+  }
+/>
+<input
+  name="phone"
+  value={editFormData.phone}
+  onChange={(e) =>
+    setEditFormData({ ...editFormData, phone: e.target.value })
+  }
+/>
+<button
+  type="button"
+  onClick={() => handleUpdateCustomer(customer.id)}
+>
+  Save Changes
+</button>
+
+<button
+  type="button"
+  onClick={() => handleDeleteCustomer(customer.id)}
+>
+  Delete
+</button>
+</>
+
+    )}
+
+
         </div>
       ))}
-
       <button onClick={handleLogout}>Logout</button>
     </div>
   );
